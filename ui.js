@@ -165,7 +165,7 @@ function cardHtml(r, k) {
   const snip = makeSnippet(best.text, current.tree, lang);
   const chap = best.ch >= 0 && r.book.ch[best.ch] ? r.book.ch[best.ch] : null;
   const gurl = b.u || ('https://www.gutenberg.org/ebooks/' + b.id);
-  const srcLabel = b.u ? 'Texto en Wikisource (CC BY-SA) ↗' : 'Ficha en Gutenberg ↗';
+  const srcLabel = b.src === 'pdl' ? 'Texto en Perseus (CC BY-SA) ↗' : (b.u ? 'Texto en Wikisource (CC BY-SA) ↗' : 'Ficha en Gutenberg ↗');
   const occCount = r.hits.length;
   return `<article class="card">
   <h3><a href="${gurl}" target="_blank" rel="noopener">${escapeHtml(b.t)}</a></h3>
@@ -174,7 +174,8 @@ function cardHtml(r, k) {
   <div class="meta">
     ${chap ? `<span class="chap">§ ${escapeHtml(chap)}</span>` : '<span>§ sin referencia de capítulo</span>'}
     <span>${occCount === 1 ? '1 aparición' : (occCount >= 50 ? 'más de 50 apariciones' : occCount + ' apariciones')} en segmentos distintos</span>
-    <span>${b.l === 'es' ? 'Español' : 'English'}</span>
+    <span>${{ es: 'Español', en: 'English', lat: 'Latín', grc: 'Griego' }[b.l] || b.l}</span>
+    <button class="apa-btn" data-k="${k}" type="button">Copiar cita (APA 7)</button>
     <a href="${gurl}" target="_blank" rel="noopener">${srcLabel}</a>
   </div>
   ${occCount > 1 ? `<details class="occs-details" data-k="${k}"><summary>Ver ${occCount >= 50 ? 'las 50 principales' : 'todas las ' + occCount} apariciones</summary><ul class="occs"></ul></details>` : ''}
@@ -208,6 +209,39 @@ function nullBox() {
   <ul>${tips.map(t => `<li>${t}</li>`).join('')}</ul></div>`;
 }
 
+function apaEntry(b) {
+  if (b.c && b.c.ok) {
+    let e = `${b.c.au}. (${b.c.yr}). ${b.t.replace(/ \([^)]*\)$/, '')}`;
+    if (b.c.ed) e += ` (${b.c.ed}, Ed.)`;
+    e += `. ${b.c.pub}. ${b.c.url}`;
+    return { ok: true, text: e };
+  }
+  if (b.c) {
+    let e = `${b.c.au}. (fecha de la edición por verificar). ${b.t.replace(/ \([^)]*\)$/, '')}. ${b.c.pub}. ${b.c.url}`;
+    return { ok: false, text: e, missing: 'fecha de la edición' };
+  }
+  const au = (b.a || []).join(', ');
+  let e = `${au}. (fecha de la edición por verificar). ${b.t}. ${b.u ? 'Wikisource' : 'Project Gutenberg'}. ${b.u || ('https://www.gutenberg.org/ebooks/' + b.id)}`;
+  return { ok: false, text: e, missing: 'fecha de la edición' };
+}
+document.addEventListener('click', ev => {
+  const btn = ev.target.closest('.apa-btn');
+  if (!btn) return;
+  const k = +btn.dataset.k;
+  const start = Math.floor(k / PAGE) * PAGE;
+  const r = current && current.verified[k];
+  if (!r) return;
+  const b = corpus.books[r.n];
+  const e = apaEntry(b);
+  const note = e.ok ? '' : `\n\n[Pendiente de completar: ${e.missing}. No es todavía una referencia APA-7 válida; verifica el dato en la ficha enlazada.]`;
+  const canon = (r.book.ch && r.book.ch.length) ? `\n\nCita en el texto: usa la parte canónica mostrada (§ ...), p. ej. (${b.a ? b.a[0] : ''}, ${b.c && b.c.yr ? b.c.yr : 's. f.'}, § ${r.book.ch[r.hits[0].ch] || ''}).` : '';
+  const full = e.text + note + canon;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(full).then(() => { btn.textContent = 'Copiada ✓'; setTimeout(() => btn.textContent = 'Copiar cita (APA 7)', 1600); });
+  } else {
+    window.prompt('Copia la cita:', full);
+  }
+});
 $('#search-form').addEventListener('submit', e => { e.preventDefault(); runSearch($('#q').value.trim()); });
 $('#f-lang').addEventListener('change', () => { if ($('#q').value.trim()) runSearch($('#q').value.trim()); });
 $('#f-topics-list').addEventListener('change', () => { updateTopicsSummary(); if ($('#q').value.trim()) runSearch($('#q').value.trim()); });
