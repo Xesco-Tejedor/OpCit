@@ -4,3 +4,11 @@ Buscador de libros por fragmento textual: busca dentro del texto completo de una
 ## Textos de Wikisource (extensión)
 
 Mecanismo para obras de Wikisource en español (campo `u` en `corpus-ext.json`: enlace a la revisión exacta). Incluidas ahora 4: Coplas de Jorge Manrique (ed. crítica de Foulché-Delbosc, 1902, escaneo IA coplasporlamuert00manruoft), La ida de Martín Fierro (José Hernández, escaneo IA 3437354; Wikisource la cita como ed. de 1894 y IA la cataloga en 1897), Filipinas dentro de cien años (José Rizal, La Solidaridad 1889-1890) y Blanca (Manuel del Palacio, 1885, escaneo de la Academia Argentina de Letras). Ese texto lo transcriben voluntarios de Wikisource y está bajo CC BY-SA 4.0; los fragmentos de `ext/` son derivados de esas revisiones (troceado y normalización de espacios; se omiten el aparato crítico de las Coplas y la advertencia editorial e ilustraciones de Martín Fierro: selección textual, no edición íntegra) y mantienen esa licencia. Atribución: Wikisource contribuyentes, historial en el enlace `oldid` de cada obra. Criterios: índice validado en Wikisource sobre un escaneo identificable, español sin traductor, autor (y editor crítico) fallecido antes de 1930 según Wikidata o el catálogo del escaneo. Verificado solo para estas 4 obras; no es una garantía jurídica.
+
+## App Android (APK)
+
+Hay una APK de Android: la app web dentro de una aplicación instalable. Descarga [opcit.apk](https://github.com/Xesco-Tejedor/OpCit/releases/download/android-latest/opcit.apk) desde la [release android-latest](https://github.com/Xesco-Tejedor/OpCit/releases/tag/android-latest) e instálala (Android pedirá permitir orígenes desconocidos).
+
+- Necesita internet para buscar; el índice y los textos se descargan una vez y quedan en caché en el teléfono.
+- Las fichas de Project Gutenberg se abren en el navegador.
+- Versión 1.0 (`es.xescotejedor.opcit`). Estado: versión de prueba. Verificadas la compilación, la firma y la descarga íntegra del archivo; el arranque en Android está en validación aparte.
