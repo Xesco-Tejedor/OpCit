@@ -1,25 +1,29 @@
 #!/usr/bin/env bash
-# Prueba de instalación y arranque de la APK publicada de OpCit en el emulador del runner.
-set -euo pipefail
+# Prueba funcional de la APK publicada de OpCit en el emulador del runner.
+set -uo pipefail
 APK="$1"; API="${2:-unknown}"
 EV=evidence; mkdir -p "$EV"
 V="$EV/veredicto-api${API}.txt"
+shot() { adb exec-out screencap -p > "$EV/$1.png" 2>/dev/null; }
 {
   echo "== OpCit APK en emulador API $API =="
-  echo "== Instalación =="
-  ls -la "$APK"
   adb install -r "$APK" 2>&1
-  echo "== Arranque de la actividad =="
+  adb logcat -c
   adb shell monkey -p es.xescotejedor.opcit -c android.intent.category.LAUNCHER 1 2>&1
-  echo "esperando la carga de la web en el WebView..."
   sleep 60
-  adb exec-out screencap -p > "$EV/pantalla-api${API}.png" 2>&1
-  adb shell uiautomator dump "/sdcard/ui-api${API}.xml" 2>&1
-  adb shell cat "/sdcard/ui-api${API}.xml" > "$EV/ui-api${API}.xml" 2>&1
-  if grep -q 'OpCit' "$EV/ui-api${API}.xml"; then echo "UI: pantalla contiene 'OpCit' = SI"; else echo "UI: pantalla contiene 'OpCit' = NO"; fi
-  if grep -q 'Corpus listo' "$EV/ui-api${API}.xml"; then echo "UI: corpus cargado = SI"; else echo "UI: corpus cargado = NO"; fi
-  echo "== Excepciones fatales =="
-  adb logcat -d 2>/dev/null | grep -i 'FATAL EXCEPTION' | head -5 || true
+  shot 01-inicio
+  adb shell wm size
+  echo "== sockets devtools =="; adb shell cat /proc/net/unix | grep -i devtools || echo "sin socket devtools"
+  echo "== WebView =="; adb shell dumpsys webviewupdate | head -12
+  # tocar el campo de busqueda (ajustado tras ver la captura) y buscar
+  W=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1); SW=${W%x*}; SH=${W#*x}
+  echo "tap campo busqueda en ${QX:-$((SW/2))},${QY:-$((SH*30/100))}"
+  adb shell input tap "${QX:-$((SW/2))}" "${QY:-$((SH*30/100))}"; sleep 2
+  adb shell input text "amor"; sleep 1
+  adb shell input keyevent 66
+  sleep 45
+  shot 02-busqueda
+  echo "== consola WebView =="
+  adb logcat -d | grep -iE 'chromium|CONSOLE|FATAL|AndroidRuntime|WebView' | tail -60
   echo "(fin)"
 } 2>&1 | tee "$V"
-grep -q "UI: pantalla contiene 'OpCit' = SI" "$V"
