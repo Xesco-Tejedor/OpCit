@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buscador de libros por fragmento textual</title>
+<meta name="description" content="Localiza obras literarias a partir de términos que aparecen en el cuerpo del texto. Corpus de dominio público (Project Gutenberg), búsqueda de texto completo en tu navegador.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <p class="brand">Xesco Tejedor · demo</p>
+    <h1>Buscador de libros por fragmento textual</h1>
+    <p class="tagline">Encuentra una obra por lo que <em>dice</em>, no por su título: busca dentro del texto íntegro de <span id="corpus-count">…</span> obras de dominio público.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="search-panel" aria-label="Búsqueda">
+    <form id="search-form" role="search">
+      <div class="search-row">
+        <input id="q" type="text" autocomplete="off" spellcheck="false"
+          placeholder='Ej.: "en un lugar de la mancha" · corazón AND viento · amor NOT guerra'
+          aria-label="Términos de búsqueda">
+        <button type="submit" id="search-btn">Buscar</button>
+      </div>
+      <p class="syntax-hint">
+        <code>"frase"</code> entre comillas = coincidencia literal (respetando tildes y mayúsculas) · <code>AND</code> (o espacio) exige ambos · <code>OR</code> alterna · <code>NOT</code> excluye la obra · paréntesis <code>( )</code> admitidos
+      </p>
+      <div class="filters">
+        <label>Idioma
+          <select id="f-lang">
+            <option value="">Todos</option>
+            <option value="es">Español</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+        <label>Tema
+          <select id="f-subject"><option value="">Todos</option></select>
+        </label>
+      </div>
+    </form>
+    <p id="status" class="status" role="status"></p>
+  </section>
+
+  <section id="results" aria-live="polite"></section>
+  <nav id="pager" class="pager" aria-label="Paginación"></nav>
+
+  <section class="guide" id="guia">
+    <h2>Guía y criterios</h2>
+    <details open>
+      <summary>Qué hace (y qué no)</summary>
+      <p>Busca dentro del <strong>texto completo</strong> de cada obra, no solo en títulos o descripciones. Un libro solo aparece si <strong>todos los términos exigidos están presentes en un mismo segmento del texto</strong>: un párrafo, o un fragmento de unos 900 caracteres como máximo cuando el párrafo es muy largo (los cortes se hacen al final de una frase, nunca a media palabra). Si cada palabra aparece en un capítulo distinto, el libro no es un resultado válido.</p>
+      <p>No busca en «todos los libros del mundo»: el corpus es una selección concreta de <strong>127 obras</strong> (ver «Corpus, derechos y límites conocidos»). Si una obra no está en el corpus, no puede aparecer.</p>
+    </details>
+    <details>
+      <summary>Sintaxis de búsqueda</summary>
+      <ul>
+        <li><code>corazón viento</code> o <code>corazón AND viento</code>: ambos términos en el mismo segmento.</li>
+        <li><code>corazón OR viento</code>: basta uno de los dos.</li>
+        <li><code>amor NOT guerra</code>: obras que contienen «amor» y en las que «guerra» no aparece <strong>en ninguna parte del texto completo</strong>. El NOT excluye la obra entera; la regla del mismo segmento se aplica a los términos exigidos.</li>
+        <li><code>"En un lugar de la Mancha"</code>: frase literal. Las comillas piden coincidencia exacta: se respetan tildes y mayúsculas y no hay flexión de palabras.</li>
+        <li>Paréntesis: <code>(cielo OR mar) AND silencio</code>.</li>
+      </ul>
+    </details>
+    <details>
+      <summary>Normalización: tildes, mayúsculas y flexión de palabras</summary>
+      <p>Fuera de las comillas, las búsquedas <strong>ignoran mayúsculas y tildes</strong>: <code>corazon</code> encuentra «corazón». Además, cada palabra se reduce a su <strong>raíz (stemming algorítmico Snowball, en español e inglés)</strong>: <code>corriendo</code> encuentra «corre», «corría», «correrán».</p>
+      <p>Ojo: esto es <strong>stemming, no lematización</strong>. Una lematización verdadera consultaría un diccionario morfológico (sabría que «fui» pertenece a «ir»); el stemming recorta terminaciones con reglas y a veces agrupa de más o de menos.</p>
+      <p>Entre comillas rige la <strong>coincidencia literal solicitada</strong>: <code>"Corazón"</code> solo encuentra «Corazón» con esa tilde y esa mayúscula, y sin flexión (<code>"corriendo"</code> no encuentra «corre»). Si no recuerdas la grafía exacta, quita las comillas.</p>
+    </details>
+    <details>
+      <summary>Resultados, ranking y apariciones</summary>
+      <p>Las tarjetas se ordenan por relevancia: frecuencia de los términos en la obra en relación con su longitud, con premio a las frases exactas. Si una obra tiene varias apariciones, la tarjeta muestra la de mayor peso y un desplegable con las demás, cada una con su referencia de capítulo cuando el texto lo permite.</p>
+      <p>El fragmento mostrado es el párrafo de origen o una ventana de 250 a 350 caracteres alrededor de la zona con más coincidencias, con los términos resaltados.</p>
+    </details>
+    <details>
+      <summary>Corpus, derechos y límites conocidos</summary>
+      <ul>
+        <li>Corpus: <span id="corpus-count-2">…</span> obras, las más descargadas en español de <a href="https://www.gutenberg.org/" rel="noopener">Project Gutenberg</a> más una selección en inglés. Es una selección acotada, no un catálogo universal. Cada tarjeta enlaza a la ficha canónica de la obra en Gutenberg.</li>
+        <li>Derechos: Project Gutenberg publica estas obras como dominio público <strong>en EE. UU.</strong> Para España se ha restringido además la selección a autores y traductores fallecidos antes de 1946 (regla vida + 80 años), salvo tres obras anónimas premodernas; las ediciones con traductor vivo o de fecha desconocida se han excluido aunque fueran populares. La condición de dominio público varía por país; ante la duda, consulta la ficha enlazada.</li>
+        <li>Las ediciones digitalizadas <strong>no conservan la paginación física</strong>; la referencia es al capítulo cuando el encabezado es detectable, y se indica «sin referencia de capítulo» cuando no lo es.</li>
+        <li>En poesía, los versos de una estrofa se muestran unidos; la coincidencia sigue localizándose por estrofa.</li>
+        <li>Los metadatos de Gutenberg no incluyen un año de publicación fiable, así que no hay filtro por fechas (el filtro de idioma y tema sí usa metadatos reales).</li>
+        <li>Todo se ejecuta en tu navegador: el índice y los textos se descargan una vez y se guardan en caché; no hay cuentas, servidores de búsqueda ni seguimiento.</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Corpus: <a href="https://www.gutenberg.org/" rel="noopener">Project Gutenberg</a> (dominio público). Los textos e índices se procesan y quedan en tu navegador.</p>
+  </div>
+</footer>
+
+<script src="stemmers.js"></script>
+<script src="app.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
