@@ -1,0 +1,2 @@
+package: name='es.xescotejedor.opcit' versionCode='5' versionName='1.4' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+application-label:'OpCit'

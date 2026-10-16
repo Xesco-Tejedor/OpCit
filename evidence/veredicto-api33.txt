@@ -1,0 +1,26 @@
+== OpCit APK en emulador API 33 ==
+Performing Streamed Install
+Success
+## Network stats: elapsed time=192ms (0ms mobile, 0ms wifi, 192ms not connected)
+socket: webview_devtools_remote_2882
+9222
+targets: page https://xesco-tejedor.github.io/OpCit/
+page: {"url":"https://xesco-tejedor.github.io/OpCit/","ua":"Mozilla/5.0 (Linux; Android 13; sdk_gphone64_x86_64 Build/TE1A.240213.009; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/109.0.5414.123 Mobile Safari/537.36","w":320,"h":616,"status":"Corpus listo: 669 obras (45.3 M de palabras). La búsqueda se ejecuta en tu navegador.","topics":24}
+RESULT base amor ms=20493 {"busy":false,"cards":10,"nullbox":false,"status":"12+ resultados confirmados en el texto (seguirá creciendo al avanzar de página)."}
+RESULT latin arma virumque ms=9189 {"busy":false,"cards":4,"nullbox":false,"status":"4 resultados confirmados en el texto."}
+RESULT griego μῆνιν ἄειδε ms=3292 {"busy":false,"cards":3,"nullbox":false,"status":"3 resultados confirmados en el texto."}
+RESULT tema1 amor ms=1511 {"busy":false,"cards":10,"nullbox":false,"status":"12+ resultados confirmados en el texto (seguirá creciendo al avanzar de página)."}
+boton seleccionar todos: true
+tras seleccionar todos: 24 marcados; 24 temas (cualquiera)
+RESULT todos-temas amor ms=1507 {"busy":false,"cards":10,"nullbox":false,"status":"12+ resultados confirmados en el texto (seguirá creciendo al avanzar de página)."}
+tras quitar seleccion: 0 marcados; resumen=Todos
+RESULT fallo-inyectado amor ms=137099 {"busy":false,"cards":4,"nullbox":false,"status":"4 resultados confirmados en el texto. ⚠ 319 descargas de obras fallaron (conexión inestable): puede haber resultados que faltan. Pulsa Busca"}
+peticiones de packs bloqueadas: 858 | caja de error visible: undefined
+RESULT reintento-sin-fallo amor ms=8771 {"busy":false,"cards":10,"nullbox":false,"status":"12+ resultados confirmados en el texto (seguirá creciendo al avanzar de página)."}
+LOGS ["NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED ","NETFAIL net::ERR_FAILED "]
+10-16 21:54:27.623   900   900 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+10-16 21:54:43.718  2840  2840 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-16 21:54:43.724  2840  2840 I AndroidRuntime: Using default boot image
+10-16 21:54:43.724  2840  2840 I AndroidRuntime: Leaving lock profiling enabled
+10-16 21:54:44.044  2840  2840 D AndroidRuntime: Calling main entry com.android.commands.monkey.Monkey
+(fin)
