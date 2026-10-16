@@ -239,9 +239,9 @@ function apaEntry(b) {
   if (!au) missing.push('autor por verificar');
   if (!yr) missing.push('fecha de la edición');
   ok = missing.length === 0;
-  let e = `${au || 'Autor por verificar'}. (${yr || 'fecha de la edición por verificar'}). ${title}`;
+  let e = `${(au || 'Autor por verificar').replace(/\.+$/, '')}. (${yr || 'fecha de la edición por verificar'}). ${title}`;
   if (eds.length) e += ` (${apaJoin(eds.map(apaIni))}, ${eds.length > 1 ? 'Eds.' : 'Ed.'})`;
-  if (pub) e += `. ${pub}`;
+  if (pub && pub !== site) e += `. ${pub}`;
   e += `. ${site}. ${url}`;
   return { ok, text: e, missing: missing.join(' y ') };
 }
