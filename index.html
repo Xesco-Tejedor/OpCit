@@ -39,9 +39,14 @@
             <option value="en">English</option>
           </select>
         </label>
-        <label>Tema
-          <select id="f-subject"><option value="">Todos</option></select>
-        </label>
+        <div class="topics-wrap">
+          <span class="topics-label" id="topics-label">Temas</span>
+          <details id="f-topics" class="topics">
+            <summary id="f-topics-summary" aria-labelledby="topics-label">Todos</summary>
+            <div id="f-topics-list" class="topics-list" role="group" aria-label="Temas (obras de cualquiera de los marcados)"></div>
+            <button type="button" id="f-topics-clear" class="topics-clear">Quitar selección</button>
+          </details>
+        </div>
       </div>
     </form>
     <p id="status" class="status" role="status"></p>
@@ -85,7 +90,7 @@
         <li>Derechos: Project Gutenberg publica estas obras como dominio público <strong>en EE. UU.</strong> Para España se ha restringido además la selección a obras cuyos autores y traductores constan fallecidos antes de 1946 (regla vida + 80 años). Si el texto es una traducción, solo entra cuando el traductor figura con fecha de fallecimiento; si no figura traductor, solo entra cuando consta (en Wikidata) que la obra se escribió en la lengua del texto. Las demás se han dejado fuera aunque sean conocidas. La condición de dominio público varía por país y esto no es asesoramiento jurídico; ante la duda, consulta la ficha enlazada.</li>
         <li>Las ediciones digitalizadas <strong>no conservan la paginación física</strong>; la referencia es al capítulo cuando el encabezado es detectable, y se indica «sin referencia de capítulo» cuando no lo es.</li>
         <li>En poesía, los versos de una estrofa se muestran unidos; la coincidencia sigue localizándose por estrofa.</li>
-        <li>Los metadatos de Gutenberg no incluyen un año de publicación fiable, así que no hay filtro por fechas (el filtro de idioma y tema sí usa metadatos reales).</li>
+        <li>Los metadatos de Gutenberg no incluyen un año de publicación fiable, así que no hay filtro por fechas (el filtro de idioma y el de temas sí usan metadatos reales; puedes marcar varios temas y salen las obras de cualquiera de ellos).</li>
         <li>Todo se ejecuta en tu navegador: el índice y los textos se descargan una vez y se guardan en caché; no hay cuentas, servidores de búsqueda ni seguimiento.</li>
       </ul>
     </details>
