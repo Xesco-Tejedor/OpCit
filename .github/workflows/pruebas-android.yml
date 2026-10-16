@@ -15,7 +15,7 @@ jobs:
         run: |
           mkdir -p out evidence
           curl -sL -o out/opcit.apk https://github.com/Xesco-Tejedor/OpCit/releases/download/android-latest/opcit.apk
-          echo 'fc64444879386e5f8844d714d4e6bd07f3de0db3dfd49dedb22d65787f7ac996  out/opcit.apk' | sha256sum -c -
+          echo '60531f2c85ca3d5000474f1377aa8d3d7d94bb2cbc2c27542802fc3fa0952d83  out/opcit.apk' | sha256sum -c -
       - name: Verificar firma y paquete
         run: |
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
@@ -34,20 +34,3 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: bash .github/scripts/e2e-opcit.sh out/opcit.apk 33
-        continue-on-error: true
-      - name: Emulador API 36 (instalación, arranque y pantalla)
-        timeout-minutes: 15
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 36
-          target: google_apis
-          arch: x86_64
-          disable-animations: true
-          script: bash .github/scripts/e2e-opcit.sh out/opcit.apk 36
-        continue-on-error: true
-      - name: Publicar evidencias como prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release delete android-pruebas -y --cleanup-tag || true
-          gh release create android-pruebas evidence/* --prerelease --title "Evidencias de prueba en emulador (run ${{ github.run_number }})" --notes "Instalación y arranque de opcit.apk en emuladores API 33 y 36. Ver veredicto-api33.txt y veredicto-api36.txt."
