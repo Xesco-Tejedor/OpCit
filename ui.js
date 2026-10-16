@@ -141,7 +141,7 @@ function renderPage(page) {
     return;
   }
   statusEl.innerHTML = '<strong>' + total + '</strong> resultado' + (total === 1 ? '' : 's') +
-    ' confirmado' + (total === 1 ? '' : 's') + ' en el texto' + (done ? '' : ' (seguirá creciendo al avanzar de página)') + '.';
+    ' confirmado' + (total === 1 ? '' : 's') + ' en el texto' + (done ? '' : ' (seguirá creciendo al avanzar de página)') + '.' + (c.failed ? ' ⚠ ' + c.failed + ' descargas de obras fallaron (conexión inestable): puede haber resultados que faltan. Pulsa Buscar de nuevo.' : '');
   resultsEl.innerHTML = items.map((r, i) => cardHtml(r, start + i)).join('');
   for (const d of resultsEl.querySelectorAll('details.occs-details')) {
     d.addEventListener('toggle', () => { if (d.open && !d.dataset.loaded) { d.dataset.loaded = '1'; fillOccs(d); } });
