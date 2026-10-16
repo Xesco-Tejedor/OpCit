@@ -5,7 +5,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const targets=JSON.parse(await get('http://127.0.0.1:9222/json'));
   console.log('targets:',targets.map(t=>t.type+' '+t.url).join(' | '));
   const t=targets.find(x=>x.type==='page'); const ws=new WebSocket(t.webSocketDebuggerUrl);
-  await new Promise(r=>ws.on('open',r));
+  await new Promise(r=>ws.on('open',r)); ws.on('close',()=>{console.log('WS CERRADO');process.exit(2);});
   let id=0; const pend={}; const logs=[];
   ws.on('message',m=>{const d=JSON.parse(m); if(d.id&&pend[d.id]){pend[d.id](d);delete pend[d.id];}
     else if(d.method==='Runtime.exceptionThrown') logs.push('EXC '+JSON.stringify(d.params.exceptionDetails.exception&&d.params.exceptionDetails.exception.description||d.params.exceptionDetails.text));
@@ -36,8 +36,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   // inyeccion de fallo de descarga de packs (CDP Fetch) y reintento
   let failMode=true, blocked=0;
   ws.on('message',m=>{const d=JSON.parse(m); if(d.method==='Fetch.requestPaused'){ if(failMode){blocked++; send('Fetch.failRequest',{requestId:d.params.requestId,errorReason:'Failed'});} else send('Fetch.continueRequest',{requestId:d.params.requestId}); }});
-  await send('Page.navigate',{url:'https://xesco-tejedor.github.io/OpCit/'});
-  for(let i=0;i<60;i++){await sleep(1000); const s2=await ev('(document.querySelector("#status")||{}).innerText||""'); if(/Corpus listo/.test(s2))break;}
+  await ev('bookCache.clear()'); // fuerza nueva descarga de los packs
   await send('Fetch.enable',{patterns:[{urlPattern:'*pack-*',requestStage:'Request'},{urlPattern:'*extpack-*',requestStage:'Request'}]});
   const f1=await run('fallo-inyectado','amor');
   console.log('peticiones de packs bloqueadas:',blocked,'| caja de error visible:',await ev('(document.querySelector(".null-box h3")||{}).innerText'));
