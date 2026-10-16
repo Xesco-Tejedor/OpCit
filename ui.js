@@ -96,8 +96,15 @@ async function fillPage(page) {
       const hits = analyzeBook(book, tree, corpus.books[x.n].l);
       if (hits.length) c.verified.push({ n: x.n, score: x.score, book, hits });
     }
-    statusEl.textContent = 'Verificando: ' + Math.min(c.cursor, c.ranked.length) + '/' + c.ranked.length +
-      ' obras revisadas, ' + c.verified.length + ' resultados confirmados…';
+    if (c.verified.length && c.shownCount !== c.verified.length) {
+      c.shownCount = c.verified.length;
+      renderPage(page);  // muestra ya lo confirmado y sigue verificando
+    }
+    if (c.cursor < c.ranked.length) {
+      const prog = ' Verificando: ' + Math.min(c.cursor, c.ranked.length) + '/' + c.ranked.length + ' obras revisadas…';
+      if (c.verified.length) statusEl.innerHTML = statusEl.innerHTML.replace(/ Verificando:.*$/, '') + prog;
+      else statusEl.textContent = prog.trim() + ' ' + c.verified.length + ' resultados confirmados.';
+    }
   }
   renderPage(page);
 }

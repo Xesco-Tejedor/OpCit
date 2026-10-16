@@ -152,7 +152,25 @@ function bookScore(tree, n, tfOf, words) {
       for (const st of tree.stems) tf += tfOf(st, n) || 0;
       return tf ? Math.log1p(tf) / Math.log(10 + words) : 0;
     }
-    case 'phrase': return 2 * Math.log1p(2) / Math.log(10 + words);
+    case 'phrase': {
+      // frase: pondera por rareza (idf) y densidad de cada palabra en la obra; no es prueba de coincidencia, solo orden de verificación
+      if (!tree.idfInfo) {
+        const N = (corpus && corpus.books.length) || 1;
+        tree.idfInfo = (tree.stems || []).map(alts => {
+          const seen = new Set();
+          for (const st of alts) { const p = index[st]; if (p) for (const [bn] of p) seen.add(bn); }
+          return seen.size ? Math.log(N / seen.size) + 0.05 : 0;
+        });
+      }
+      let sc = 0;
+      (tree.stems || []).forEach((alts, i) => {
+        if (!tree.idfInfo[i]) return;
+        let tf = 0;
+        for (const st of alts) tf += tfOf(st, n) || 0;
+        if (tf) sc += tree.idfInfo[i] * Math.log1p(tf * 1e5 / words);
+      });
+      return 2 * sc / Math.max(1, (tree.stems || []).length * 6);
+    }
     case 'and': return bookScore(tree.a, n, tfOf, words) + bookScore(tree.b, n, tfOf, words);
     case 'or': return Math.max(bookScore(tree.a, n, tfOf, words), bookScore(tree.b, n, tfOf, words));
     case 'not': return 0;
