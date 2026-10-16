@@ -33,6 +33,7 @@ async function boot() {
       list.appendChild(lab);
     }
     statusEl.innerHTML = 'Corpus listo: <strong>' + txt + '</strong>. La búsqueda se ejecuta en tu navegador.';
+    loadIndex().catch(() => {}); // precarga el índice para que la primera búsqueda sea rápida
   } catch (e) {
     statusEl.textContent = 'No pude cargar el corpus: ' + e.message;
   }
@@ -62,7 +63,7 @@ async function runSearch(q) {
   try { tree = parseQuery(q); }
   catch (e) { statusEl.textContent = e.message; return; }
   $('#search-btn').disabled = true;
-  statusEl.textContent = 'Cargando índice…';
+  statusEl.textContent = index ? 'Buscando…' : 'Cargando índice (la primera búsqueda descarga unos 11 MB; puede tardar con datos móviles)…';
   try {
     await Promise.all([loadCorpus(), loadIndex()]);
     if (seq !== searchSeq) return;
@@ -100,7 +101,7 @@ async function fillPage(page) {
     if (c.seq !== searchSeq) return;
     const batch = c.ranked.slice(c.cursor, c.cursor + 12);
     c.cursor += batch.length;
-    const books = await Promise.all(batch.map(x => loadBook(x.n).then(b => [x, b]).catch(() => null)));
+    const books = await Promise.all(batch.map(x => loadBook(x.n).then(b => [x, b]).catch(() => { c.failed = (c.failed || 0) + 1; return null; })));
     if (c.seq !== searchSeq) return;
     for (const pair of books) {
       if (!pair) continue;
@@ -127,6 +128,12 @@ function renderPage(page) {
   const items = c.verified.slice(start, start + PAGE);
   const done = c.cursor >= c.ranked.length;
   const total = c.verified.length + (done ? 0 : '+');
+  if (!items.length && page === 1 && c.failed) {
+    statusEl.textContent = '';
+    resultsEl.innerHTML = '<div class="null-box"><h3>No se pudo completar la búsqueda</h3><p>Fallaron ' + c.failed + ' descargas de obras (conexión inestable). Esto no significa que no haya resultados: pulsa Buscar otra vez.</p></div>';
+    pagerEl.innerHTML = '';
+    return;
+  }
   if (!items.length && page === 1) {
     statusEl.textContent = '';
     resultsEl.innerHTML = nullBox();
@@ -287,6 +294,16 @@ document.addEventListener('click', ev => {
 $('#search-form').addEventListener('submit', e => { e.preventDefault(); runSearch($('#q').value.trim()); });
 $('#f-lang').addEventListener('change', () => { if ($('#q').value.trim()) runSearch($('#q').value.trim()); });
 $('#f-topics-list').addEventListener('change', () => { updateTopicsSummary(); if ($('#q').value.trim()) runSearch($('#q').value.trim()); });
+(function () { // botón «Seleccionar todos» (marca los temas listados)
+  const clr = $('#f-topics-clear');
+  const all = document.createElement('button');
+  all.type = 'button'; all.id = 'f-topics-all'; all.className = clr.className; all.textContent = 'Seleccionar todos';
+  all.addEventListener('click', () => {
+    document.querySelectorAll('#f-topics-list input').forEach(i => { i.checked = true; });
+    updateTopicsSummary(); if ($('#q').value.trim()) runSearch($('#q').value.trim());
+  });
+  clr.parentNode.insertBefore(all, clr);
+})();
 $('#f-topics-clear').addEventListener('click', () => {
   document.querySelectorAll('#f-topics-list input:checked').forEach(i => { i.checked = false; });
   updateTopicsSummary(); if ($('#q').value.trim()) runSearch($('#q').value.trim());
