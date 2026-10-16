@@ -102,10 +102,32 @@ async function fetchGzJSON(url) {
   const text = await new Response(new Blob([buf]).stream().pipeThrough(ds)).text();
   return JSON.parse(text);
 }
-async function loadIndex() { if (!index) index = await fetchGzJSON('index.json.gz'); return index; }
-async function loadCorpus() { if (!corpus) corpus = await (await fetch('corpus.json')).json(); return corpus; }
+async function fetchOptJSON(url) {
+  try { const r = await fetch(url); if (!r.ok) return null; return await r.json(); } catch (e) { return null; }
+}
+async function loadIndex() {
+  if (!index) {
+    index = await fetchGzJSON('index.json.gz');
+    // extensión incremental opcional (obras añadidas sin regenerar el índice base)
+    const ext = await fetchOptJSON('index-ext.json');
+    if (ext) for (const st in ext) { const a = index[st] || (index[st] = []); for (const p of ext[st]) a.push(p); a.sort((x, y) => y[1] - x[1]); }
+  }
+  return index;
+}
+async function loadCorpus() {
+  if (!corpus) {
+    corpus = await (await fetch('corpus.json')).json();
+    const ext = await fetchOptJSON('corpus-ext.json');
+    if (ext && ext.books) for (const b of ext.books) corpus.books.push(b);
+  }
+  return corpus;
+}
 async function loadBook(n) {
   const b = corpus.books[n];
+  if (b.x) { // obra de la extensión: partes de texto plano ext/<archivo>.json
+    if (!bookCache.has('x' + n)) bookCache.set('x' + n, Promise.all(b.x.map(f => fetch('ext/' + f).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }))).then(parts => ({ ch: parts[0].ch, seg: [].concat(...parts.map(p => p.seg)) })));
+    return await bookCache.get('x' + n);
+  }
   if (!bookCache.has(b.p)) bookCache.set(b.p, fetchGzJSON('pack-' + b.p + '.json.gz'));
   const pack = await bookCache.get(b.p);
   return pack[b.id];
