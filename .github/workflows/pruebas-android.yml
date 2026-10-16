@@ -1,0 +1,53 @@
+name: Pruebas Android en emulador
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: android-pruebas
+  cancel-in-progress: true
+jobs:
+  emulador:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Descargar la APK publicada y verificar su huella
+        run: |
+          mkdir -p out evidence
+          curl -sL -o out/opcit.apk https://github.com/Xesco-Tejedor/OpCit/releases/download/android-latest/opcit.apk
+          echo '90f645444406ba82bd2447303f6b308a5b77008c163194421297f76ea5ed9554  out/opcit.apk' | sha256sum -c -
+      - name: Verificar firma y paquete
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs out/opcit.apk | tee evidence/firma.txt
+          "$BT/aapt" dump badging out/opcit.apk | grep -E '^(package|application-label)' | tee evidence/paquete.txt
+      - name: Activar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Emulador API 33 (instalación, arranque y pantalla)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: bash .github/scripts/e2e-opcit.sh out/opcit.apk 33
+        continue-on-error: true
+      - name: Emulador API 36 (instalación, arranque y pantalla)
+        timeout-minutes: 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: bash .github/scripts/e2e-opcit.sh out/opcit.apk 36
+        continue-on-error: true
+      - name: Publicar evidencias como prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-pruebas -y --cleanup-tag || true
+          gh release create android-pruebas evidence/* --prerelease --title "Evidencias de prueba en emulador (run ${{ github.run_number }})" --notes "Instalación y arranque de opcit.apk en emuladores API 33 y 36. Ver veredicto-api33.txt y veredicto-api36.txt."
