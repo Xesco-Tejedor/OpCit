@@ -129,12 +129,23 @@ function loadExtAsset(name) {
 async function fetchExtGzJSON(name) { // name: 'index-ext' o 'extpack-N'; con respaldo local
   try { return await loadExtAsset(name); } catch (e) { return await fetchGzJSON(name + '.json.gz'); }
 }
+async function retry(fn, tries) { // reintenta descargas inestables (datos móviles)
+  let err;
+  for (let i = 0; i < (tries || 3); i++) {
+    try { return await fn(); } catch (e) { err = e; await new Promise(r => setTimeout(r, 800 * (i + 1))); }
+  }
+  throw err;
+}
+async function cachedLoad(key, fn) { // no deja en caché una descarga fallida
+  if (!bookCache.has(key)) bookCache.set(key, retry(fn).catch(e => { bookCache.delete(key); throw e; }));
+  return bookCache.get(key);
+}
 async function loadIndex() {
   if (!index) {
-    index = await fetchGzJSON('index.json.gz');
+    index = await retry(() => fetchGzJSON('index.json.gz'));
     // extensión incremental opcional (obras añadidas sin regenerar el índice base)
     let ext = null;
-    try { ext = await fetchExtGzJSON('index-ext'); } catch (e) { ext = await fetchOptJSON('index-ext.json'); }
+    try { ext = await retry(() => fetchExtGzJSON('index-ext'), 2); } catch (e) { ext = await fetchOptJSON('index-ext.json'); }
     if (ext) for (const st in ext) { const a = index[st] || (index[st] = []); for (const p of ext[st]) a.push(p); a.sort((x, y) => y[1] - x[1]); }
   }
   return index;
@@ -150,16 +161,14 @@ async function loadCorpus() {
 async function loadBook(n) {
   const b = corpus.books[n];
   if (b.xp !== undefined) { // obra de la extensión empaquetada: extpack-<xp>.json.gz
-    if (!bookCache.has('xp' + b.xp)) bookCache.set('xp' + b.xp, fetchExtGzJSON('extpack-' + b.xp));
-    const pack = await bookCache.get('xp' + b.xp);
+    const pack = await cachedLoad('xp' + b.xp, () => fetchExtGzJSON('extpack-' + b.xp));
     return pack[b.id];
   }
   if (b.x) { // obra de la extensión: partes de texto plano ext/<archivo>.json
     if (!bookCache.has('x' + n)) bookCache.set('x' + n, Promise.all(b.x.map(f => fetch('ext/' + f).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }))).then(parts => ({ ch: parts[0].ch, seg: [].concat(...parts.map(p => p.seg)) })));
     return await bookCache.get('x' + n);
   }
-  if (!bookCache.has(b.p)) bookCache.set(b.p, fetchGzJSON('pack-' + b.p + '.json.gz'));
-  const pack = await bookCache.get(b.p);
+  const pack = await cachedLoad(b.p, () => fetchGzJSON('pack-' + b.p + '.json.gz'));
   return pack[b.id];
 }
 
