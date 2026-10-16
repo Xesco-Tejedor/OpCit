@@ -11,4 +11,4 @@ Hay una APK de Android: la app web dentro de una aplicación instalable. Descarg
 
 - Necesita internet para buscar; el índice y los textos se descargan una vez y quedan en caché en el teléfono.
 - Las fichas de Project Gutenberg se abren en el navegador.
-- Versión 1.0 (`es.xescotejedor.opcit`). Estado: versión de prueba. Verificadas la compilación, la firma y la descarga íntegra del archivo; el arranque en Android está en validación aparte.
+- Versión 1.1 (`es.xescotejedor.opcit`). Estado: versión de prueba. Verificadas la compilación, la firma y la descarga íntegra del archivo; el arranque en Android está en validación aparte.
