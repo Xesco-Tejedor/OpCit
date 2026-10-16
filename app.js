@@ -248,42 +248,56 @@ function analyzeBook(book, tree, lang) {
 function makeSnippet(segText, tree, lang) {
   const MAXW = 340;
   if (segText.length <= 400) return segText;
-  // posiciones de términos coincidentes para centrar la ventana
-  const positions = [];
-  for (const tk of segmentTokens(segText)) {
+  const toks = segmentTokens(segText);
+  // spans de coincidencia [ini, fin, peso]: frases literales (peso 2) + términos por raíz (peso 1)
+  const spans = [];
+  for (const ph of collectPhrases(tree)) {
+    const n = ph.wordsRaw.length;
+    for (let i = 0; i + n <= toks.length; i++) {
+      let ok = true;
+      for (let k = 0; k < n; k++) if (toks[i + k].raw !== ph.wordsRaw[k]) { ok = false; break; }
+      if (ok) { spans.push([toks[i].i, toks[i + n - 1].i + toks[i + n - 1].len, 2]); i += n - 1; }
+    }
+  }
+  for (const tk of toks) {
     const w = norm(tk.raw);
     if (w.length < 2) continue;
-    const st = stem(w, lang);
-    if (leafMatchStem(tree, st)) positions.push(tk.i);
+    if (leafMatchStem(tree, stem(w, lang))) spans.push([tk.i, tk.i + tk.len, 1]);
   }
-  // frases: localiza su inicio
-  collectPhrases(tree).forEach(ph => {
-    const jt = joinedTokensRaw(segText);
-    const at = jt.indexOf(ph.joinedRaw);
-    if (at >= 0) {
-      // aproxima posición en caracteres: cuenta tokens anteriores
-      const before = jt.slice(0, at).split(' ').length;
-      let p = 0, cnt = 0;
-      for (const tk of segmentTokens(segText)) { if (cnt === before) { p = tk.i; break; } cnt++; }
-      positions.push(p);
-    }
-  });
-  let center = Math.floor(segText.length / 2);
-  if (positions.length) {
-    positions.sort((a, b) => a - b);
-    let best = positions[0], bestDensity = -1;
-    for (let i = 0; i < positions.length; i++) {
+  let start, end;
+  if (!spans.length) {
+    start = Math.max(0, Math.min(Math.floor(segText.length / 2) - Math.floor(MAXW / 2), segText.length - MAXW));
+    end = Math.min(start + MAXW, segText.length);
+  } else {
+    spans.sort((a, b) => a[0] - b[0]);
+    // ancla: inicio del grupo de spans con más peso total dentro de una ventana MAXW
+    let ai = 0, best = -1;
+    for (let i = 0; i < spans.length; i++) {
       let d = 0;
-      for (let j = i; j < positions.length && positions[j] - positions[i] < MAXW; j++) d++;
-      if (d > bestDensity) { bestDensity = d; best = positions[i]; }
+      for (let j = i; j < spans.length && spans[j][1] - spans[i][0] <= MAXW; j++) d += spans[j][2];
+      if (d > best) { best = d; ai = i; }
     }
-    center = best + Math.floor(MAXW / 2);
+    let a0 = spans[ai][0], a1 = spans[ai][1];
+    for (const sp of spans) if (sp[0] >= a0 && sp[1] - a0 <= MAXW) a1 = Math.max(a1, sp[1]);
+    const spanLen = a1 - a0;
+    const pad = Math.floor((MAXW - Math.min(spanLen, MAXW)) / 2);
+    start = Math.max(0, Math.min(a0 - pad, segText.length - MAXW));
+    end = Math.min(start + MAXW, segText.length);
+    if (end < a1) { end = a1; start = Math.max(0, end - MAXW); }
+    // el ajuste a palabra/frase solo puede ensanchar la ventana, nunca cortar la coincidencia
+    while (start > 0 && /\S/.test(segText[start - 1])) start--;
+    const tail = segText.slice(Math.max(start, end - 60), Math.min(end + 40, segText.length));
+    const stopM = tail.match(/[.!?…»\n]\s/);
+    if (stopM) {
+      const candEnd = Math.max(start, end - 60) + stopM.index + 1;
+      if (candEnd > start + 200 && candEnd >= a1) { end = candEnd; }
+      else { while (end < segText.length && /\S/.test(segText[end])) end++; }
+    } else { while (end < segText.length && /\S/.test(segText[end])) end++; }
+    if (end < a1) end = Math.min(a1, segText.length);
+    return (start > 0 ? '… ' : '') + segText.slice(start, end).trim() + (end < segText.length ? ' …' : '');
   }
-  let start = Math.max(0, Math.min(center - Math.floor(MAXW / 2), segText.length - MAXW));
-  // retrocede al inicio de la palabra (nunca corta una palabra, y menos la coincidencia)
   while (start > 0 && /\S/.test(segText[start - 1])) start--;
-  let end = Math.min(start + MAXW, segText.length);
-  // si hay un cierre de frase cerca del límite, úsalo; si no, corta en espacio
+  end = Math.min(start + MAXW, segText.length);
   const tail = segText.slice(end - 60, Math.min(end + 40, segText.length));
   const stopM = tail.match(/[.!?…»\n]\s/);
   if (stopM && end - 60 + stopM.index + 1 > start + 200) end = end - 60 + stopM.index + 1;
@@ -328,7 +342,14 @@ function highlight(snippet, tree, lang) {
     if (!isMark) for (const [s, e] of phraseSpans) if (tk.i >= s && tk.i < e) { isMark = true; break; }
     if (isMark) marks.push([tk.i, tk.i + tk.len]);
   }
-  for (const [s, e] of marks) {
+  // fusiona marcas contiguas separadas solo por espacios (una frase se ve como un solo resaltado)
+  const merged = [];
+  for (const m of marks) {
+    const lm = merged[merged.length - 1];
+    if (lm && /^\s+$/.test(snippet.slice(lm[1], m[0]))) lm[1] = m[1];
+    else merged.push([m[0], m[1]]);
+  }
+  for (const [s, e] of merged) {
     html += escapeHtml(snippet.slice(last, s)) + '<mark>' + escapeHtml(snippet.slice(s, e)) + '</mark>';
     last = e;
   }

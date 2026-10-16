@@ -15,6 +15,7 @@ async function boot() {
     const txt = n + ' obras (' + (words / 1e6).toFixed(1) + ' M de palabras)';
     $('#corpus-count').textContent = n;
     $('#corpus-count-2').textContent = n;
+    const cc3 = $('#corpus-count-3'); if (cc3) cc3.textContent = n;
     document.querySelector('.tagline').innerHTML =
       'Encuentra una obra por lo que <em>dice</em>, no por su título: busca dentro del texto íntegro de ' +
       n + ' obras de dominio público (' + (words / 1e6).toFixed(1) + ' millones de palabras).';
