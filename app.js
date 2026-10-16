@@ -127,6 +127,7 @@ function leafPostingSet(leaf) {
     for (const alts of leaf.stems) {
       const s = new Set();
       for (const st of alts) { const post = index[st]; if (post) for (const [n] of post) s.add(n); }
+      if (!s.size) continue; // palabra sin postings (p. ej. "y"): no estrecha; la verificación literal decide
       acc = acc === null ? s : new Set([...acc].filter(x => s.has(x)));
       if (!acc.size) break;
     }
