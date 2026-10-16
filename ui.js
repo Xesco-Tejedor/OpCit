@@ -23,11 +23,14 @@ async function boot() {
     const freq = {};
     for (const b of corpus.books) for (const s of b.s) freq[s] = (freq[s] || 0) + 1;
     const top = Object.entries(freq).filter(([, c]) => c >= 3).sort((a, b) => b[1] - a[1]).slice(0, 24);
-    const sel = $('#f-subject');
+    const list = $('#f-topics-list');
     for (const [s, c] of top) {
-      const o = document.createElement('option');
-      o.value = s; o.textContent = s + ' (' + c + ')';
-      sel.appendChild(o);
+      const lab = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.value = s;
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(' ' + s + ' (' + c + ')'));
+      list.appendChild(lab);
     }
     statusEl.innerHTML = 'Corpus listo: <strong>' + txt + '</strong>. La búsqueda se ejecuta en tu navegador.';
   } catch (e) {
@@ -37,10 +40,19 @@ async function boot() {
 
 function passesFilters(n) {
   const b = corpus.books[n];
-  const lang = $('#f-lang').value, subj = $('#f-subject').value;
+  const lang = $('#f-lang').value, subjs = selectedTopics();
   if (lang && b.l !== lang) return false;
-  if (subj && !b.s.includes(subj)) return false;
+  if (subjs.length && !subjs.some(s => b.s.includes(s))) return false; // OR: cualquiera de los temas marcados
   return true;
+}
+
+function selectedTopics() {
+  return [...document.querySelectorAll('#f-topics-list input:checked')].map(i => i.value);
+}
+
+function updateTopicsSummary() {
+  const t = selectedTopics();
+  $('#f-topics-summary').textContent = t.length === 0 ? 'Todos' : t.length === 1 ? t[0] : t.length + ' temas (cualquiera)';
 }
 
 async function runSearch(q) {
@@ -152,7 +164,8 @@ function cardHtml(r, k) {
   const best = r.hits[0];
   const snip = makeSnippet(best.text, current.tree, lang);
   const chap = best.ch >= 0 && r.book.ch[best.ch] ? r.book.ch[best.ch] : null;
-  const gurl = 'https://www.gutenberg.org/ebooks/' + b.id;
+  const gurl = b.u || ('https://www.gutenberg.org/ebooks/' + b.id);
+  const srcLabel = b.u ? 'Texto en Wikisource (CC BY-SA) ↗' : 'Ficha en Gutenberg ↗';
   const occCount = r.hits.length;
   return `<article class="card">
   <h3><a href="${gurl}" target="_blank" rel="noopener">${escapeHtml(b.t)}</a></h3>
@@ -162,7 +175,7 @@ function cardHtml(r, k) {
     ${chap ? `<span class="chap">§ ${escapeHtml(chap)}</span>` : '<span>§ sin referencia de capítulo</span>'}
     <span>${occCount === 1 ? '1 aparición' : (occCount >= 50 ? 'más de 50 apariciones' : occCount + ' apariciones')} en segmentos distintos</span>
     <span>${b.l === 'es' ? 'Español' : 'English'}</span>
-    <a href="${gurl}" target="_blank" rel="noopener">Ficha en Gutenberg ↗</a>
+    <a href="${gurl}" target="_blank" rel="noopener">${srcLabel}</a>
   </div>
   ${occCount > 1 ? `<details class="occs-details" data-k="${k}"><summary>Ver ${occCount >= 50 ? 'las 50 principales' : 'todas las ' + occCount} apariciones</summary><ul class="occs"></ul></details>` : ''}
 </article>`;
@@ -188,7 +201,7 @@ function nullBox() {
   if (/"/.test(q)) tips.push('Las comillas piden coincidencia literal (tildes, mayúsculas y forma exacta): quítalas para ignorarlas y admitir flexiones, o revisa la grafía de la frase.');
   if (/\b(AND|Y)\b|\s/.test(q.trim())) tips.push('Prueba con menos términos: todos los términos exigidos deben convivir en un mismo párrafo.');
   if (!/\bOR\b|\bO\b/.test(q)) tips.push('Usa OR para alternar sinónimos: <code>cielo OR mar</code>.');
-  if ($('#f-lang').value || $('#f-subject').value) tips.push('Amplía los filtros de idioma o tema (ahora están limitando el corpus).');
+  if ($('#f-lang').value || selectedTopics().length) tips.push('Amplía los filtros de idioma o tema (ahora están limitando el corpus).');
   tips.push('Recuerda que el corpus es una selección de obras de dominio público: la obra que buscas puede no estar en él.');
   return `<div class="null-box"><h3>Sin coincidencias</h3>
   <p>Ninguna obra del corpus contiene esos términos juntos en un mismo segmento del texto.</p>
@@ -197,6 +210,10 @@ function nullBox() {
 
 $('#search-form').addEventListener('submit', e => { e.preventDefault(); runSearch($('#q').value.trim()); });
 $('#f-lang').addEventListener('change', () => { if ($('#q').value.trim()) runSearch($('#q').value.trim()); });
-$('#f-subject').addEventListener('change', () => { if ($('#q').value.trim()) runSearch($('#q').value.trim()); });
+$('#f-topics-list').addEventListener('change', () => { updateTopicsSummary(); if ($('#q').value.trim()) runSearch($('#q').value.trim()); });
+$('#f-topics-clear').addEventListener('click', () => {
+  document.querySelectorAll('#f-topics-list input:checked').forEach(i => { i.checked = false; });
+  updateTopicsSummary(); if ($('#q').value.trim()) runSearch($('#q').value.trim());
+});
 boot();
 })();
