@@ -18,7 +18,7 @@ async function boot() {
     const cc3 = $('#corpus-count-3'); if (cc3) cc3.textContent = n;
     document.querySelector('.tagline').innerHTML =
       'Encuentra una obra por lo que <em>dice</em>, no por su título: busca dentro del texto íntegro de ' +
-      n + ' obras de dominio público (' + (words / 1e6).toFixed(1) + ' millones de palabras).';
+      n + ' obras (' + (words / 1e6).toFixed(1) + ' millones de palabras): dominio público y ediciones abiertas CC BY-SA.';
     // temas: subjects más frecuentes
     const freq = {};
     for (const b of corpus.books) for (const s of b.s) freq[s] = (freq[s] || 0) + 1;
@@ -203,26 +203,47 @@ function nullBox() {
   if (/\b(AND|Y)\b|\s/.test(q.trim())) tips.push('Prueba con menos términos: todos los términos exigidos deben convivir en un mismo párrafo.');
   if (!/\bOR\b|\bO\b/.test(q)) tips.push('Usa OR para alternar sinónimos: <code>cielo OR mar</code>.');
   if ($('#f-lang').value || selectedTopics().length) tips.push('Amplía los filtros de idioma o tema (ahora están limitando el corpus).');
-  tips.push('Recuerda que el corpus es una selección de obras de dominio público: la obra que buscas puede no estar en él.');
+  tips.push('Recuerda que el corpus es una selección concreta de obras (dominio público y ediciones abiertas CC BY-SA): la obra que buscas puede no estar en él.');
   return `<div class="null-box"><h3>Sin coincidencias</h3>
   <p>Ninguna obra del corpus contiene esos términos juntos en un mismo segmento del texto.</p>
   <ul>${tips.map(t => `<li>${t}</li>`).join('')}</ul></div>`;
 }
 
+function apaIni(n) { // "David B. Monro" -> "D. B. Monro" (iniciales para editores)
+  const parts = n.replace(/[()]/g, '').trim().split(/\s+/);
+  if (parts.length < 2) return n;
+  return parts.slice(0, -1).map(p => p[0].toUpperCase() + '.').join(' ') + ' ' + parts[parts.length - 1];
+}
+function apaJoin(list) {
+  if (list.length <= 1) return list.join('');
+  return list.slice(0, -1).join(', ') + ' & ' + list[list.length - 1];
+}
 function apaEntry(b) {
-  if (b.c && b.c.ok) {
-    let e = `${b.c.au}. (${b.c.yr}). ${b.t.replace(/ \([^)]*\)$/, '')}`;
-    if (b.c.ed) e += ` (${b.c.ed}, Ed.)`;
-    e += `. ${b.c.pub}. ${b.c.url}`;
-    return { ok: true, text: e };
+  const title = (b.c && b.c.title) || b.t.replace(/ \([^)]*\)$/, '');
+  const c = b.c;
+  let au, yr, eds, pub, site, url, ok, missing = [];
+  if (c) { // Perseus (pdl) o Wikisource (ws): metadatos de la edición
+    au = c.asur || c.au; // clásicos: nombre de cita habitual; ws: apellido verificado
+    yr = c.yr;
+    eds = c.eds || (c.ed ? [c.ed] : []);
+    pub = c.pub || null; // editorial del imprint TEI; la plataforma NO se asume editorial
+    site = c.site || 'Perseus Digital Library';
+    url = c.url;
+  } else { // Gutenberg: autor normalizado desde su registro RDF; edición por verificar
+    au = b.asur && b.asur.length ? apaJoin(b.asur) : (b.a || []).join(', ');
+    if (!(b.asur && b.asur.length)) missing.push('formato del autor por verificar');
+    yr = null; eds = []; pub = null;
+    site = 'Project Gutenberg';
+    url = b.u || ('https://www.gutenberg.org/ebooks/' + b.id);
   }
-  if (b.c) {
-    let e = `${b.c.au}. (fecha de la edición por verificar). ${b.t.replace(/ \([^)]*\)$/, '')}. ${b.c.pub}. ${b.c.url}`;
-    return { ok: false, text: e, missing: 'fecha de la edición' };
-  }
-  const au = (b.a || []).join(', ');
-  let e = `${au}. (fecha de la edición por verificar). ${b.t}. ${b.u ? 'Wikisource' : 'Project Gutenberg'}. ${b.u || ('https://www.gutenberg.org/ebooks/' + b.id)}`;
-  return { ok: false, text: e, missing: 'fecha de la edición' };
+  if (!au) missing.push('autor por verificar');
+  if (!yr) missing.push('fecha de la edición');
+  ok = missing.length === 0;
+  let e = `${au || 'Autor por verificar'}. (${yr || 'fecha de la edición por verificar'}). ${title}`;
+  if (eds.length) e += ` (${apaJoin(eds.map(apaIni))}, ${eds.length > 1 ? 'Eds.' : 'Ed.'})`;
+  if (pub) e += `. ${pub}`;
+  e += `. ${site}. ${url}`;
+  return { ok, text: e, missing: missing.join(' y ') };
 }
 document.addEventListener('click', ev => {
   const btn = ev.target.closest('.apa-btn');
@@ -234,7 +255,7 @@ document.addEventListener('click', ev => {
   const b = corpus.books[r.n];
   const e = apaEntry(b);
   const note = e.ok ? '' : `\n\n[Pendiente de completar: ${e.missing}. No es todavía una referencia APA-7 válida; verifica el dato en la ficha enlazada.]`;
-  const canon = (r.book.ch && r.book.ch.length) ? `\n\nCita en el texto: usa la parte canónica mostrada (§ ...), p. ej. (${b.a ? b.a[0] : ''}, ${b.c && b.c.yr ? b.c.yr : 's. f.'}, § ${r.book.ch[r.hits[0].ch] || ''}).` : '';
+  const citeAu = (b.c && (b.c.asur || b.c.au)) || (b.asur && b.asur[0]) || (b.a && b.a[0]) || 'Autor'; const citeSur = citeAu.split(',')[0]; const canon = (r.book.ch && r.book.ch.length) ? `\n\nCita en el texto: usa la parte canónica mostrada (§ ...), p. ej. (${citeSur}, ${b.c && b.c.yr ? b.c.yr : 's. f.'}, § ${r.book.ch[r.hits[0].ch] || ''}).` : '';
   const full = e.text + note + canon;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(full).then(() => { btn.textContent = 'Copiada ✓'; setTimeout(() => btn.textContent = 'Copiar cita (APA 7)', 1600); });
