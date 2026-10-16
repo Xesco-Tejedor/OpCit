@@ -10,7 +10,7 @@ const stemCache = new Map();
 function stem(word, lang) {
   const key = lang + ':' + word;
   let v = stemCache.get(key);
-  if (v === undefined) { v = stemmers[lang].stem(word); stemCache.set(key, v); }
+  if (v === undefined) { v = stemmers[lang] ? stemmers[lang].stem(word) : word; stemCache.set(key, v); }
   return v;
 }
 const stemAny = w => { const a = stem(w, 'es'), b = stem(w, 'en'); return a === b ? [a] : [a, b]; };
@@ -105,11 +105,36 @@ async function fetchGzJSON(url) {
 async function fetchOptJSON(url) {
   try { const r = await fetch(url); if (!r.ok) return null; return await r.json(); } catch (e) { return null; }
 }
+/* Datos de la extensión (corpus clásico Perseus): se sirven como assets .js del release
+   datos-perseus y se cargan con <script> (las descargas de release no envían CORS).
+   Cada asset define window.OPCIT_EXT["<nombre>"] = base64(gzip(JSON)). */
+const EXT_ASSET_BASE = 'https://github.com/Xesco-Tejedor/OpCit/releases/download/datos-perseus/';
+function loadExtAsset(name) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = EXT_ASSET_BASE + name + '.js';
+    s.onload = () => {
+      const b64 = window.OPCIT_EXT && window.OPCIT_EXT[name];
+      if (!b64) { reject(new Error('asset sin datos: ' + name)); return; }
+      try {
+        const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        const ds = new DecompressionStream('gzip');
+        resolve(new Response(new Blob([bytes]).stream().pipeThrough(ds)).text().then(JSON.parse));
+      } catch (e) { reject(e); }
+    };
+    s.onerror = () => reject(new Error('no carga asset ' + name));
+    document.head.appendChild(s);
+  });
+}
+async function fetchExtGzJSON(name) { // name: 'index-ext' o 'extpack-N'; con respaldo local
+  try { return await loadExtAsset(name); } catch (e) { return await fetchGzJSON(name + '.json.gz'); }
+}
 async function loadIndex() {
   if (!index) {
     index = await fetchGzJSON('index.json.gz');
     // extensión incremental opcional (obras añadidas sin regenerar el índice base)
-    const ext = await fetchOptJSON('index-ext.json');
+    let ext = null;
+    try { ext = await fetchExtGzJSON('index-ext'); } catch (e) { ext = await fetchOptJSON('index-ext.json'); }
     if (ext) for (const st in ext) { const a = index[st] || (index[st] = []); for (const p of ext[st]) a.push(p); a.sort((x, y) => y[1] - x[1]); }
   }
   return index;
@@ -124,6 +149,11 @@ async function loadCorpus() {
 }
 async function loadBook(n) {
   const b = corpus.books[n];
+  if (b.xp !== undefined) { // obra de la extensión empaquetada: extpack-<xp>.json.gz
+    if (!bookCache.has('xp' + b.xp)) bookCache.set('xp' + b.xp, fetchExtGzJSON('extpack-' + b.xp));
+    const pack = await bookCache.get('xp' + b.xp);
+    return pack[b.id];
+  }
   if (b.x) { // obra de la extensión: partes de texto plano ext/<archivo>.json
     if (!bookCache.has('x' + n)) bookCache.set('x' + n, Promise.all(b.x.map(f => fetch('ext/' + f).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }))).then(parts => ({ ch: parts[0].ch, seg: [].concat(...parts.map(p => p.seg)) })));
     return await bookCache.get('x' + n);
@@ -275,6 +305,7 @@ function analyzeBook(book, tree, lang) {
   for (let i = 0; i < book.seg.length; i++) {
     const [ch, text, stems] = book.seg[i];
     const set = new Set(stems.split(' '));
+    for (const tk of joinedTokens(text).split(' ')) if (tk) set.add(tk);
     const joined = joinedTokensRaw(text);
     if (evalSegment(tree, set, joined)) {
       hits.push({ i, ch, score: countLeaves(tree, set, joined), text });
