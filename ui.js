@@ -175,7 +175,7 @@ function cardHtml(r, k) {
     ${chap ? `<span class="chap">§ ${escapeHtml(chap)}</span>` : '<span>§ sin referencia de capítulo</span>'}
     <span>${occCount === 1 ? '1 aparición' : (occCount >= 50 ? 'más de 50 apariciones' : occCount + ' apariciones')} en segmentos distintos</span>
     <span>${{ es: 'Español', en: 'English', lat: 'Latín', grc: 'Griego' }[b.l] || b.l}</span>
-    <button class="apa-btn" data-k="${k}" type="button">Copiar cita (APA 7)</button>
+    <button class="apa-btn" data-k="${k}" type="button">${apaEntry(b).ok ? 'Copiar cita (APA 7)' : 'Copiar cita APA 7 (pendiente de datos)'}</button>
     <a href="${gurl}" target="_blank" rel="noopener">${srcLabel}</a>
   </div>
   ${occCount > 1 ? `<details class="occs-details" data-k="${k}"><summary>Ver ${occCount >= 50 ? 'las 50 principales' : 'todas las ' + occCount} apariciones</summary><ul class="occs"></ul></details>` : ''}
@@ -214,6 +214,27 @@ function apaIni(n) { // "David B. Monro" -> "D. B. Monro" (iniciales para editor
   if (parts.length < 2) return n;
   return parts.slice(0, -1).map(p => p[0].toUpperCase() + '.').join(' ') + ' ' + parts[parts.length - 1];
 }
+function apaAutor(n) { // "Apellido(s), Nombres ..." RDF -> "Apellido(s), N. N." (APA 7)
+  if (!n.includes(',')) return n; // nombre clásico o ya corto: se cita tal cual
+  const i = n.indexOf(',');
+  const sur = n.slice(0, i).trim();
+  let given = n.slice(i + 1).replace(/\([^)]*\)/g, '').trim();
+  let toks = given.split(/\s+/).filter(Boolean);
+  // títulos nobiliarios finales ("condesa de") no forman parte del nombre
+  const PART = new Set(['de', 'del', 'la', 'las', 'y', 'van', 'von', 'der', 'den', 'da', 'di']);
+  for (;;) {
+    const n0 = toks.length;
+    while (toks.length && !PART.has(toks[toks.length - 1].toLowerCase()) && toks[toks.length - 1][0] === toks[toks.length - 1][0].toLowerCase()) toks.pop();
+    while (toks.length && PART.has(toks[toks.length - 1].toLowerCase())) toks.pop();
+    if (toks.length === n0) break;
+  }
+  const inis = [];
+  for (const t of toks) {
+    if (PART.has(t.toLowerCase())) { if (inis.length) inis[inis.length - 1] += ' ' + t; }
+    else inis.push(t[0].toUpperCase() + '.');
+  }
+  return inis.length ? `${sur}, ${inis.join(' ')}` : sur;
+}
 function apaJoin(list) {
   if (list.length <= 1) return list.join('');
   return list.slice(0, -1).join(', ') + ' & ' + list[list.length - 1];
@@ -223,14 +244,14 @@ function apaEntry(b) {
   const c = b.c;
   let au, yr, eds, pub, site, url, ok, missing = [];
   if (c) { // Perseus (pdl) o Wikisource (ws): metadatos de la edición
-    au = c.asur || c.au; // clásicos: nombre de cita habitual; ws: apellido verificado
+    au = c.asur ? apaAutor(c.asur) : c.au; // clásicos: nombre de cita habitual; ws: apellido verificado + iniciales
     yr = c.yr;
     eds = c.eds || (c.ed ? [c.ed] : []);
     pub = c.pub || null; // editorial del imprint TEI; la plataforma NO se asume editorial
     site = c.site || 'Perseus Digital Library';
     url = c.url;
   } else { // Gutenberg: autor normalizado desde su registro RDF; edición por verificar
-    au = b.asur && b.asur.length ? apaJoin(b.asur) : (b.a || []).join(', ');
+    au = b.asur && b.asur.length ? apaJoin(b.asur.map(apaAutor)) : (b.a || []).join(', ');
     if (!(b.asur && b.asur.length)) missing.push('formato del autor por verificar');
     yr = null; eds = []; pub = null;
     site = 'Project Gutenberg';
