@@ -15,7 +15,7 @@ jobs:
         run: |
           mkdir -p out evidence
           curl -sL -o out/opcit.apk https://github.com/Xesco-Tejedor/OpCit/releases/download/android-latest/opcit.apk
-          echo '90f645444406ba82bd2447303f6b308a5b77008c163194421297f76ea5ed9554  out/opcit.apk' | sha256sum -c -
+          echo 'fc64444879386e5f8844d714d4e6bd07f3de0db3dfd49dedb22d65787f7ac996  out/opcit.apk' | sha256sum -c -
       - name: Verificar firma y paquete
         run: |
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
